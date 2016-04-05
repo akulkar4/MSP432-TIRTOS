@@ -157,6 +157,7 @@ int main(void)
     /* Construct uart Task  thread */
     Task_Params_init(&taskParams);
     taskParams.stackSize = TASKSTACKSIZE;
+    taskParams.priority = 1;
     taskParams.stack = &task0Stack;
     taskParams.instance->name = "echo";
     Task_construct(&task0Struct, (Task_FuncPtr)uartFxn, &taskParams, NULL);
@@ -164,6 +165,7 @@ int main(void)
     /* Construct uart Task  thread */
     Task_Params_init(&taskParams_1);
     taskParams_1.stackSize = TASKSTACKSIZE;
+    taskParams_1.priority = 3;
     taskParams_1.stack = &task1Stack;
     taskParams_1.instance->name = "lcd";
     //Task_construct(&task1Struct, (Task_FuncPtr)lcdFxn, &taskParams_1, NULL);
