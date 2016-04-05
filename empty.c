@@ -45,8 +45,8 @@
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/I2C.h>
 // #include <ti/drivers/SDSPI.h>
- #include <ti/drivers/SPI.h>
-// #include <ti/drivers/UART.h>
+#include <ti/drivers/SPI.h>
+#include <ti/drivers/UART.h>
 // #include <ti/drivers/Watchdog.h>
 // #include <ti/drivers/WiFi.h>
 
@@ -54,11 +54,11 @@
 #include "Board.h"
 //#include "msp.h"
 //#include <driverlib.h>
-#include <grlib.h>
+#include "grlib.h"
 #include "Crystalfontz128x128_ST7735.h"
 #include <stdio.h>
 
-#define TASKSTACKSIZE   512
+#define TASKSTACKSIZE   768
 
 Task_Struct task0Struct;
 Char task0Stack[TASKSTACKSIZE];
@@ -71,16 +71,36 @@ void drawTitle(void);
 Graphics_Context g_sContext;
 
 /*
- *  ======== heartBeatFxn ========
+ *  ======== uartFxn ========
  *  Toggle the Board_LED0. The Task_sleep is determined by arg0 which
  *  is configured for the heartBeat Task instance.
  */
-Void heartBeatFxn(UArg arg0, UArg arg1)
+Void uartFxn(UArg arg0, UArg arg1)
 {
+	/*Yet to figure out clock settings. Read won't work till then*/
+    char input;
+    UART_Handle uart;
+    UART_Params uartParams;
+
+    /* Create a UART with data processing off. */
+    UART_Params_init(&uartParams);
+    uartParams.writeDataMode = UART_DATA_BINARY;
+    uartParams.readDataMode = UART_DATA_BINARY;
+    uartParams.readReturnMode = UART_RETURN_FULL;
+    uartParams.readEcho = UART_ECHO_OFF;
+    uartParams.baudRate = 115200;
+    uart = UART_open(Board_UART0, &uartParams);
+
+    if (uart == NULL) {
+        System_abort("Error opening the UART");
+    }
+
+    /* Loop forever reading */
     while (1)
     {
-        Task_sleep((UInt)arg0);
-        GPIO_toggle(Board_LED0);
+        UART_read(uart, &input, 1);
+        //post input to mqueue
+
     }
 }
 
@@ -94,29 +114,31 @@ int main(void)
     /* Call board init functions */
     Board_initGeneral();
     Board_initGPIO();
+    Board_initUART();
+
     //Board_initI2C();
     // Board_initSDSPI();
     // Board_initSPI();
-    // Board_initUART();
     // Board_initWatchdog();
     // Board_initWiFi();
 
-    /* Construct heartBeat Task  thread */
+    /* Construct uart Task  thread */
     Task_Params_init(&taskParams);
-    taskParams.arg0 = 500;
     taskParams.stackSize = TASKSTACKSIZE;
     taskParams.stack = &task0Stack;
-    Task_construct(&task0Struct, (Task_FuncPtr)heartBeatFxn, &taskParams, NULL);
+    taskParams.instance->name = "echo";
+    Task_construct(&task0Struct, (Task_FuncPtr)uartFxn, &taskParams, NULL);
 
     MAP_WDT_A_holdTimer();
-   MAP_Interrupt_disableMaster();
+    MAP_Interrupt_disableMaster();
 
-   /* Initializes Clock System - This is required for the LCD*/
-   MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_48);
+   /* Initializes Clock System - This is required for the LCD */
+   MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_12);
    MAP_CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_HSMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
+
     /* Initializes display */
 	Crystalfontz128x128_Init();
 
@@ -137,6 +159,7 @@ int main(void)
     /* SysMin will only print to the console when you call flush or exit */
     System_flush();
 
+    MAP_Interrupt_enableMaster();
 
     /* Start BIOS */
     BIOS_start();
