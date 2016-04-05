@@ -43,20 +43,32 @@
 
 /* TI-RTOS Header files */
 #include <ti/drivers/GPIO.h>
-// #include <ti/drivers/I2C.h>
+#include <ti/drivers/I2C.h>
 // #include <ti/drivers/SDSPI.h>
-// #include <ti/drivers/SPI.h>
+ #include <ti/drivers/SPI.h>
 // #include <ti/drivers/UART.h>
 // #include <ti/drivers/Watchdog.h>
 // #include <ti/drivers/WiFi.h>
 
 /* Board Header file */
 #include "Board.h"
+//#include "msp.h"
+//#include <driverlib.h>
+#include <grlib.h>
+#include "Crystalfontz128x128_ST7735.h"
+#include <stdio.h>
 
 #define TASKSTACKSIZE   512
 
 Task_Struct task0Struct;
 Char task0Stack[TASKSTACKSIZE];
+
+/* ADC results buffer */
+static uint16_t resultsBuffer[3];
+void drawTitle(void);
+
+/* Graphic library context */
+Graphics_Context g_sContext;
 
 /*
  *  ======== heartBeatFxn ========
@@ -65,7 +77,8 @@ Char task0Stack[TASKSTACKSIZE];
  */
 Void heartBeatFxn(UArg arg0, UArg arg1)
 {
-    while (1) {
+    while (1)
+    {
         Task_sleep((UInt)arg0);
         GPIO_toggle(Board_LED0);
     }
@@ -81,7 +94,7 @@ int main(void)
     /* Call board init functions */
     Board_initGeneral();
     Board_initGPIO();
-    // Board_initI2C();
+    //Board_initI2C();
     // Board_initSDSPI();
     // Board_initSPI();
     // Board_initUART();
@@ -95,6 +108,27 @@ int main(void)
     taskParams.stack = &task0Stack;
     Task_construct(&task0Struct, (Task_FuncPtr)heartBeatFxn, &taskParams, NULL);
 
+    MAP_WDT_A_holdTimer();
+   MAP_Interrupt_disableMaster();
+
+   /* Initializes Clock System - This is required for the LCD*/
+   MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_48);
+   MAP_CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
+   MAP_CS_initClockSignal(CS_HSMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
+   MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
+   MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
+    /* Initializes display */
+	Crystalfontz128x128_Init();
+
+	/* Set default screen orientation */
+	Crystalfontz128x128_SetOrientation(LCD_ORIENTATION_UP);
+
+	Graphics_initContext(&g_sContext, &g_sCrystalfontz128x128);
+	    Graphics_setForegroundColor(&g_sContext, GRAPHICS_COLOR_RED);
+	    Graphics_setBackgroundColor(&g_sContext, GRAPHICS_COLOR_WHITE);
+	    GrContextFontSet(&g_sContext, &g_sFontFixed6x8);
+	    drawTitle();
+
     /* Turn on user LED */
     GPIO_write(Board_LED0, Board_LED_ON);
 
@@ -103,8 +137,50 @@ int main(void)
     /* SysMin will only print to the console when you call flush or exit */
     System_flush();
 
+
     /* Start BIOS */
     BIOS_start();
 
     return (0);
+}
+
+void drawTitle()
+{
+    Graphics_clearDisplay(&g_sContext);
+    Graphics_drawStringCentered(&g_sContext,
+                                    "Accelerometer:",
+                                    AUTO_STRING_LENGTH,
+                                    64,
+                                    30,
+                                    OPAQUE_TEXT);
+    //drawAccelData();
+}
+
+void drawAccelData()
+{
+    char string[8];
+    sprintf(string, "X: %5d", resultsBuffer[0]);
+    Graphics_drawStringCentered(&g_sContext,
+                                    (int8_t *)string,
+                                    8,
+                                    64,
+                                    50,
+                                    OPAQUE_TEXT);
+
+    sprintf(string, "Y: %5d", resultsBuffer[1]);
+    Graphics_drawStringCentered(&g_sContext,
+                                    (int8_t *)string,
+                                    8,
+                                    64,
+                                    70,
+                                    OPAQUE_TEXT);
+
+    sprintf(string, "Z: %5d", resultsBuffer[2]);
+    Graphics_drawStringCentered(&g_sContext,
+                                    (int8_t *)string,
+                                    8,
+                                    64,
+                                    90,
+                                    OPAQUE_TEXT);
+
 }
