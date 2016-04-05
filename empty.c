@@ -165,7 +165,7 @@ int main(void)
     /* Construct uart Task  thread */
     Task_Params_init(&taskParams_1);
     taskParams_1.stackSize = TASKSTACKSIZE;
-    taskParams_1.priority = 3;
+    taskParams_1.priority = 2;
     taskParams_1.stack = &task1Stack;
     taskParams_1.instance->name = "lcd";
     //Task_construct(&task1Struct, (Task_FuncPtr)lcdFxn, &taskParams_1, NULL);
