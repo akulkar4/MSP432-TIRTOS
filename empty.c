@@ -60,8 +60,13 @@
 
 #define TASKSTACKSIZE   768
 
+/*Task 0 Struct declaration*/
 Task_Struct task0Struct;
 Char task0Stack[TASKSTACKSIZE];
+
+/*Task 1 Struct declaration*/
+Task_Struct task1Struct;
+Char task1Stack[TASKSTACKSIZE];
 
 /* ADC results buffer */
 static uint16_t resultsBuffer[3];
@@ -91,16 +96,42 @@ Void uartFxn(UArg arg0, UArg arg1)
     uartParams.baudRate = 115200;
     uart = UART_open(Board_UART0, &uartParams);
 
-    if (uart == NULL) {
+    if (uart == NULL)
+    {
         System_abort("Error opening the UART");
     }
 
     /* Loop forever reading */
     while (1)
     {
-        UART_read(uart, &input, 1);
+         UART_read(uart, &input, 1);
         //post input to mqueue
+    }
+}
 
+/*
+ *  ======== lcdFxn ========
+ *  Controls LCD
+ *
+ */
+Void lcdFxn(UArg arg0, UArg arg1)
+{
+	/*Init Lcd*/
+	Crystalfontz128x128_Init();
+
+	/* Set default screen orientation */
+	Crystalfontz128x128_SetOrientation(LCD_ORIENTATION_UP);
+
+	Graphics_initContext(&g_sContext, &g_sCrystalfontz128x128);
+	Graphics_setForegroundColor(&g_sContext, GRAPHICS_COLOR_RED);
+	Graphics_setBackgroundColor(&g_sContext, GRAPHICS_COLOR_WHITE);
+	GrContextFontSet(&g_sContext, &g_sFontFixed6x8);
+	drawTitle();
+
+    /* Loop forever */
+    while (1)
+    {
+    	//read from message queue and display
     }
 }
 
@@ -110,6 +141,7 @@ Void uartFxn(UArg arg0, UArg arg1)
 int main(void)
 {
     Task_Params taskParams;
+    Task_Params taskParams_1;
 
     /* Call board init functions */
     Board_initGeneral();
@@ -129,6 +161,13 @@ int main(void)
     taskParams.instance->name = "echo";
     Task_construct(&task0Struct, (Task_FuncPtr)uartFxn, &taskParams, NULL);
 
+    /* Construct uart Task  thread */
+    Task_Params_init(&taskParams_1);
+    taskParams_1.stackSize = TASKSTACKSIZE;
+    taskParams_1.stack = &task1Stack;
+    taskParams_1.instance->name = "lcd";
+    //Task_construct(&task1Struct, (Task_FuncPtr)lcdFxn, &taskParams_1, NULL);
+
     MAP_WDT_A_holdTimer();
     MAP_Interrupt_disableMaster();
 
@@ -138,18 +177,6 @@ int main(void)
    MAP_CS_initClockSignal(CS_HSMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
-
-    /* Initializes display */
-	Crystalfontz128x128_Init();
-
-	/* Set default screen orientation */
-	Crystalfontz128x128_SetOrientation(LCD_ORIENTATION_UP);
-
-	Graphics_initContext(&g_sContext, &g_sCrystalfontz128x128);
-	    Graphics_setForegroundColor(&g_sContext, GRAPHICS_COLOR_RED);
-	    Graphics_setBackgroundColor(&g_sContext, GRAPHICS_COLOR_WHITE);
-	    GrContextFontSet(&g_sContext, &g_sFontFixed6x8);
-	    drawTitle();
 
     /* Turn on user LED */
     GPIO_write(Board_LED0, Board_LED_ON);
