@@ -6,17 +6,26 @@
  */
 
 #include "Board.h"
+#include <string.h>
+
 #include <ti/drivers/UART.h>
 
 /* XDCtools Header files */
 #include <xdc/std.h>
 #include <xdc/runtime/System.h>
+#include <xdc/cfg/global.h>
 
 /* BIOS Header files */
 #include <ti/sysbios/BIOS.h>
 #include <ti/sysbios/knl/Task.h>
+#include <ti/sysbios/knl/Mailbox.h>
 
 #include "uart_task.h"
+
+typedef struct MsgObj
+{
+	uint16_t fatigue_val;            		// message value
+} MsgObj;
 
 #define UARTBUFFERSIZE	3
 /*Task 0 Struct declaration*/
@@ -30,8 +39,11 @@ Char task0Stack[UART_TASKSTACKSIZE];
  */
 Void uartFxn(UArg arg0, UArg arg1)
 {
+	MsgObj msg;
 	/*Yet to figure out clock settings. Read won't work till then*/
     char rcvBuffer[UARTBUFFERSIZE];
+    char rcvChar;
+    uint16_t i, ten_count = 0;
     UART_Handle uart;
     UART_Params uartParams;
 
@@ -52,17 +64,42 @@ Void uartFxn(UArg arg0, UArg arg1)
     /* Loop forever reading */
     while (1)
     {
-    	UART_read(uart, &rcvBuffer, UARTBUFFERSIZE);
-    	rcvBuffer[0] = rcvBuffer[0] - 0x30;
+    	ten_count = 0;
+    	memset(rcvBuffer, 10 ,sizeof(rcvBuffer));
 
-    	if (rcvBuffer[0] != 218)
-    	{
-    		System_printf("%d ",rcvBuffer[0]);
-    		System_printf("\n");
-    		System_flush();
-    	}
+     	for(i=0; i<=UARTBUFFERSIZE; i++)
+     	{
+     		UART_read(uart, &rcvChar, 1);
+     		rcvChar = rcvChar - 0x30;
 
+    		if(rcvChar != 241)
+    		{
+    			rcvBuffer[i] = rcvChar;
+    		}
 
+    		else
+    			break;
+     	}
+
+     	for(i=0; i<UARTBUFFERSIZE; i++)
+     	{
+    		if(rcvBuffer[i] == 10)
+    			ten_count++;
+     	}
+
+     	if(ten_count == 2)
+     		msg.fatigue_val = (uint16_t)rcvBuffer[0];															//one digit sensor reading
+
+     	else if(ten_count == 1)
+     		msg.fatigue_val = (uint16_t)rcvBuffer[0]*10 + (uint16_t)rcvBuffer[1];								//two digit sensor reading
+
+     	else if(ten_count == 0)
+     		msg.fatigue_val = (uint16_t)rcvBuffer[0]*100 + (uint16_t)rcvBuffer[1]*10 + (uint16_t)rcvBuffer[2];   //three digit sensor reading
+
+     	else
+     		msg.fatigue_val = 0;  																			//failsafe
+
+     	Mailbox_post (mailbox0, &msg, BIOS_WAIT_FOREVER);
         //post input to mqueue
     }
 }
