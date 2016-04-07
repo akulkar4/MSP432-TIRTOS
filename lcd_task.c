@@ -4,13 +4,15 @@
  *  Created on: 05-Apr-2016
  *      Author: Alok
  */
-#include<stdio.h>
+
+#include <stdio.h>
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/SPI.h>
 
 /* XDCtools Header files */
 #include <xdc/std.h>
 #include <xdc/runtime/System.h>
+#include <xdc/cfg/global.h>
 
 /* BIOS Header files */
 #include <ti/sysbios/BIOS.h>
@@ -31,6 +33,12 @@ uint16_t resultsBuffer[3];
 /* Graphic library context */
 Graphics_Context g_sContext;
 
+typedef struct MsgObj
+{
+	uint16_t fatigue_val;            		// message value
+} MsgObj;
+
+
 /*
  *  ======== lcdFxn ========
  *  Controls LCD
@@ -39,6 +47,8 @@ Graphics_Context g_sContext;
 
 Void lcdFxn(UArg arg0, UArg arg1)
 {
+	MsgObj msg;
+
 	/*Init Lcd*/
 	Crystalfontz128x128_Init();
 
@@ -49,12 +59,15 @@ Void lcdFxn(UArg arg0, UArg arg1)
 	Graphics_setForegroundColor(&g_sContext, GRAPHICS_COLOR_RED);
 	Graphics_setBackgroundColor(&g_sContext, GRAPHICS_COLOR_WHITE);
 	GrContextFontSet(&g_sContext, &g_sFontFixed6x8);
-	drawTitle();
 
     /* Loop forever */
     while (1)
     {
     	//read from message queue and display
+    	Mailbox_pend (mailbox0, &msg, BIOS_WAIT_FOREVER);
+
+    	drawFatigueTitle(&msg);
+
     }
 }
 
@@ -70,7 +83,7 @@ void init_lcd_task()
     Task_construct(&task1Struct, (Task_FuncPtr)lcdFxn, &taskParams_1, NULL);
 }
 
-void drawTitle()
+void drawAccelTitle()
 {
     Graphics_clearDisplay(&g_sContext);
     Graphics_drawStringCentered(&g_sContext,
@@ -82,6 +95,23 @@ void drawTitle()
     //drawAccelData();
 }
 
+void drawFatigueData(MsgObj *msg)
+{
+	/*printing fatigue Sensor Values on LCD*/
+	char string[8];
+
+	//Change number of chars to 1 and test.
+	sprintf(string, "%d", msg->fatigue_val);
+	Graphics_drawStringCentered(&g_sContext, (int8_t *)string, 8, 64, 90, OPAQUE_TEXT);
+
+}
+
+void drawFatigueTitle(MsgObj *msg)
+{
+    Graphics_clearDisplay(&g_sContext);
+    Graphics_drawStringCentered(&g_sContext, "Fatigue:", AUTO_STRING_LENGTH, 64, 60, OPAQUE_TEXT);
+    drawFatigueData(msg);
+}
 void drawAccelData()
 {
     char string[8];

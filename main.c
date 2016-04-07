@@ -31,7 +31,7 @@
  */
 
 /*
- *  ======== empty.c ========
+ *  ======== main.c ========
  */
 /* XDCtools Header files */
 #include <xdc/std.h>
@@ -86,8 +86,8 @@ int main(void)
     /*UART Task*/
     init_uart_task();
 
+    /*LCD Task*/
     init_lcd_task();
-
 
     MAP_WDT_A_holdTimer();
     MAP_Interrupt_disableMaster();
