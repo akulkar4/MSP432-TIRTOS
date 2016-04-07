@@ -10,8 +10,10 @@
 
 #define LCD_TASKSTACKSIZE 512
 
+extern uint16_t resultsBuffer[3];
+extern Graphics_Context g_sContext;
 void drawTitle(void);
 void init_lcd_task();
-
+void drawAccelData();
 
 #endif /* LCD_TASK_H_ */

@@ -4,7 +4,7 @@
  *  Created on: 05-Apr-2016
  *      Author: Alok
  */
-
+#include<stdio.h>
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/SPI.h>
 
@@ -26,7 +26,7 @@ Task_Struct task1Struct;
 Char task1Stack[LCD_TASKSTACKSIZE];
 
 /* ADC results buffer */
-static uint16_t resultsBuffer[3];
+uint16_t resultsBuffer[3];
 
 /* Graphic library context */
 Graphics_Context g_sContext;
