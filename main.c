@@ -53,8 +53,6 @@
 
 /* Board Header file */
 #include "Board.h"
-//#include "msp.h"
-//#include <driverlib.h>
 
 #include "Crystalfontz128x128_ST7735.h"
 #include "grlib.h"
@@ -66,22 +64,40 @@
 
 void ADC_Handler(void);
 void ADC_Process_Data(void);
+
+/* Timer_A Continuous Mode Configuration Parameter */
+const Timer_A_UpModeConfig upModeConfig =
+{
+        TIMER_A_CLOCKSOURCE_ACLK,            // ACLK Clock Source
+        TIMER_A_CLOCKSOURCE_DIVIDER_1,       // ACLK/1 = 32Khz
+        16384,
+        TIMER_A_TAIE_INTERRUPT_DISABLE,      // Disable Timer ISR
+        TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE, // Disable CCR0
+        TIMER_A_DO_CLEAR                     // Clear Counter
+};
+
+/* Timer_A Compare Configuration Parameter */
+const Timer_A_CompareModeConfig compareConfig =
+{
+        TIMER_A_CAPTURECOMPARE_REGISTER_1,          // Use CCR1
+        TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
+        TIMER_A_OUTPUTMODE_SET_RESET,               // Toggle output but
+        16384                                       // 16000 Period
+};
 /*
  *  ======== main ========
  */
 int main(void)
 
 {
-    /* Call board init functions */
+    // Call board init functions
     Board_initGeneral();
     Board_initGPIO();
     Board_initUART();
 
-    //Board_initI2C();
-    // Board_initSDSPI();
-    // Board_initSPI();
-    // Board_initWatchdog();
-    // Board_initWiFi();
+    // Setup LED Pin
+	MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
+	MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
 
     /*UART Task*/
     init_uart_task();
@@ -89,7 +105,10 @@ int main(void)
     /*LCD Task*/
     init_lcd_task();
 
+    //Watchdog Timer Stop!!
     MAP_WDT_A_holdTimer();
+
+    //Disable interrupts before you start configuring
     MAP_Interrupt_disableMaster();
 
    /* Initializes Clock System - This is required for the LCD */
@@ -99,54 +118,63 @@ int main(void)
    MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
 
-   /* Initializing ADC (ADCOSC/64/8) */
-       MAP_ADC14_enableModule();
-       MAP_ADC14_initModule(ADC_CLOCKSOURCE_ADCOSC, ADC_PREDIVIDER_64, ADC_DIVIDER_8,
-               0);
+   // Configures Pin 4.0, 4.2, and 6.1 (A11,A13,A14)as ADC input
+   MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN0 | GPIO_PIN2, GPIO_TERTIARY_MODULE_FUNCTION);
+   MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P6, GPIO_PIN1, GPIO_TERTIARY_MODULE_FUNCTION);
 
-       /* Configuring ADC Memory (ADC_MEM0 - ADC_MEM2 (A11, A13, A14)  with no repeat)
-                * with internal 2.5v reference */
-           MAP_ADC14_configureMultiSequenceMode(ADC_MEM0, ADC_MEM2, true);
-           MAP_ADC14_configureConversionMemory(ADC_MEM0,
-                   ADC_VREFPOS_AVCC_VREFNEG_VSS,
-                   ADC_INPUT_A14, ADC_NONDIFFERENTIAL_INPUTS);
+   //Initializing ADC (ADCOSC/64/8)
+   MAP_ADC14_enableModule();
+   MAP_ADC14_initModule(ADC_CLOCKSOURCE_MCLK, ADC_PREDIVIDER_1, ADC_DIVIDER_1,0);
 
-           MAP_ADC14_configureConversionMemory(ADC_MEM1,
-                   ADC_VREFPOS_AVCC_VREFNEG_VSS,
-                   ADC_INPUT_A13, ADC_NONDIFFERENTIAL_INPUTS);
+   /* Configuring ADC Memory (ADC_MEM0 - ADC_MEM2 (A11, A13, A14)  with no repeat)
+			* with internal 2.5v reference */
+   MAP_ADC14_configureMultiSequenceMode(ADC_MEM0, ADC_MEM2, true);
+   MAP_ADC14_configureConversionMemory(ADC_MEM0,
+	   ADC_VREFPOS_AVCC_VREFNEG_VSS,
+	   ADC_INPUT_A14, ADC_NONDIFFERENTIAL_INPUTS);
 
-           MAP_ADC14_configureConversionMemory(ADC_MEM2,
-                   ADC_VREFPOS_AVCC_VREFNEG_VSS,
-                   ADC_INPUT_A11, ADC_NONDIFFERENTIAL_INPUTS);
+   MAP_ADC14_configureConversionMemory(ADC_MEM1,
+	   ADC_VREFPOS_AVCC_VREFNEG_VSS,
+	   ADC_INPUT_A13, ADC_NONDIFFERENTIAL_INPUTS);
 
-           /* Enabling the interrupt when a conversion on channel 2 (end of sequence)
-            *  is complete and enabling conversions */
-           MAP_ADC14_enableInterrupt(ADC_INT2);
+   MAP_ADC14_configureConversionMemory(ADC_MEM2,
+		   ADC_VREFPOS_AVCC_VREFNEG_VSS,
+		   ADC_INPUT_A11, ADC_NONDIFFERENTIAL_INPUTS);
 
-           /* Enabling Interrupts */
-           MAP_Interrupt_enableInterrupt(INT_ADC14);
+   //Configuring Timer_A1 in continuous mode and sourced from ACLK
+   MAP_Timer_A_configureUpMode(TIMER_A1_BASE, &upModeConfig);
 
-    /* Turn on user LED */
-    GPIO_write(Board_LED0, Board_LED_ON);
+   // Configuring Timer_A1 in CCR1 to trigger at 16000 (0.5s)
+   MAP_Timer_A_initCompare(TIMER_A1_BASE, &compareConfig);
 
-    System_printf("Starting the example\nSystem provider is set to SysMin. "
+   // Configuring the sample trigger to be sourced from Timer_A1  and setting it
+   // to automatic iteration after it is triggereds
+   MAP_ADC14_setSampleHoldTrigger(ADC_TRIGGER_SOURCE3, false);
+
+   //Enabling the interrupt when a conversion on channel 2 (end of sequence)
+   //is complete and enabling conversions
+   MAP_ADC14_enableInterrupt(ADC_INT2);
+
+   // Triggering the start of the sample
+   MAP_ADC14_enableConversion();
+
+   // Enabling Interrupts for the ADC14
+   MAP_Interrupt_enableInterrupt(INT_ADC14);
+
+   // Configuration is done, let the interrupts commence
+      MAP_Interrupt_enableMaster();
+
+   System_printf("Starting the example\nSystem provider is set to SysMin. "
                   "Halt the target to view any SysMin contents in ROV.\n");
-    /* SysMin will only print to the console when you call flush or exit */
-    System_flush();
 
-    MAP_Interrupt_enableMaster();
+    // SysMin will only print to the console when you call flush or exit
+   System_flush();
 
-    /* Setting up the sample timer to automatically step through the sequence
-        * convert.
-        */
-       MAP_ADC14_enableSampleTimer(ADC_AUTOMATIC_ITERATION);
+    // Starting the Timer_A0
+   MAP_Timer_A_startCounter(TIMER_A1_BASE, TIMER_A_UP_MODE);
 
-       /* Triggering the start of the sample */
-       MAP_ADC14_enableConversion();
-       MAP_ADC14_toggleConversionTrigger();
-
-    /* Start BIOS */
-    BIOS_start();
+    // Start BIOS , TI-RTOS takes control after this call
+   BIOS_start();
 
     return (0);
 }
@@ -163,11 +191,13 @@ void ADC_Handler(void)
 
 void ADC_Process_Data(void)
 {
-	/* Make the buffer here local, pass it on through the Mailbox*/
-	/* Apparently you can call draw title here? */
-
+	AccData acc;
 	/* Store ADC14 conversion results */
-	resultsBuffer[0] = ADC14_getResult(ADC_MEM0);
-	resultsBuffer[1] = ADC14_getResult(ADC_MEM1);
-	resultsBuffer[2] = ADC14_getResult(ADC_MEM2);
+	acc.x_value = ADC14_getResult(ADC_MEM0);
+	acc.y_value = ADC14_getResult(ADC_MEM1);
+	acc.z_value = ADC14_getResult(ADC_MEM2);
+	Mailbox_post (mailbox1, &acc, BIOS_NO_WAIT);
+
+	// This is used only to check the frequency of the configured interrupt
+	GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
 }

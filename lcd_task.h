@@ -10,10 +10,21 @@
 
 #define LCD_TASKSTACKSIZE 1024
 
-extern uint16_t resultsBuffer[3];
-extern Graphics_Context g_sContext;
+//extern Graphics_Context g_sContext;
 void drawTitle(void);
 void init_lcd_task();
-void drawAccelData();
-void drawFatigueTitle();
+
+typedef struct MsgObj
+{
+	uint16_t fatigue_val;            		// message value
+} MsgObj;
+
+typedef struct AccelData
+{
+	uint16_t x_value;            		// message value
+	uint16_t y_value;            		// message value
+	uint16_t z_value;            		// message value
+} AccData;
+
+
 #endif /* LCD_TASK_H_ */

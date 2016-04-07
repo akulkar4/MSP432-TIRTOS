@@ -27,17 +27,13 @@
 Task_Struct task1Struct;
 Char task1Stack[LCD_TASKSTACKSIZE];
 
-/* ADC results buffer */
-uint16_t resultsBuffer[3];
-
 /* Graphic library context */
 Graphics_Context g_sContext;
 
-typedef struct MsgObj
-{
-	uint16_t fatigue_val;            		// message value
-} MsgObj;
-
+void drawAccelTitle(AccData *acc);
+void drawAccelData(AccData *acc);
+void drawFatigueTitle(MsgObj *msg);
+void drawFatigueData(MsgObj *msg);
 
 /*
  *  ======== lcdFxn ========
@@ -48,6 +44,7 @@ typedef struct MsgObj
 Void lcdFxn(UArg arg0, UArg arg1)
 {
 	MsgObj msg;
+	AccData acc;
 
 	/*Init Lcd*/
 	Crystalfontz128x128_Init();
@@ -66,8 +63,10 @@ Void lcdFxn(UArg arg0, UArg arg1)
     	//read from message queue and display
     	Mailbox_pend (mailbox0, &msg, BIOS_WAIT_FOREVER);
 
+    	// Different mailbox for the accelerometer values
+    	Mailbox_pend (mailbox1, &acc, BIOS_WAIT_FOREVER);
     	drawFatigueTitle(&msg);
-
+    	drawAccelTitle(&acc);
     }
 }
 
@@ -83,7 +82,7 @@ void init_lcd_task()
     Task_construct(&task1Struct, (Task_FuncPtr)lcdFxn, &taskParams_1, NULL);
 }
 
-void drawAccelTitle()
+void drawAccelTitle(AccData *acc)
 {
     Graphics_clearDisplay(&g_sContext);
     Graphics_drawStringCentered(&g_sContext,
@@ -92,7 +91,7 @@ void drawAccelTitle()
                                     64,
                                     30,
                                     OPAQUE_TEXT);
-    //drawAccelData();
+    drawAccelData(acc);
 }
 
 void drawFatigueData(MsgObj *msg)
@@ -112,10 +111,12 @@ void drawFatigueTitle(MsgObj *msg)
     Graphics_drawStringCentered(&g_sContext, "Fatigue:", AUTO_STRING_LENGTH, 64, 60, OPAQUE_TEXT);
     drawFatigueData(msg);
 }
-void drawAccelData()
+
+
+void drawAccelData(AccData *acc)
 {
     char string[8];
-    sprintf(string, "X: %5d", resultsBuffer[0]);
+    sprintf(string, "X: %5d", acc->x_value);
     Graphics_drawStringCentered(&g_sContext,
                                     (int8_t *)string,
                                     8,
@@ -123,7 +124,7 @@ void drawAccelData()
                                     50,
                                     OPAQUE_TEXT);
 
-    sprintf(string, "Y: %5d", resultsBuffer[1]);
+    sprintf(string, "Y: %5d", acc->y_value);
     Graphics_drawStringCentered(&g_sContext,
                                     (int8_t *)string,
                                     8,
@@ -131,7 +132,7 @@ void drawAccelData()
                                     70,
                                     OPAQUE_TEXT);
 
-    sprintf(string, "Z: %5d", resultsBuffer[2]);
+    sprintf(string, "Z: %5d", acc->z_value);
     Graphics_drawStringCentered(&g_sContext,
                                     (int8_t *)string,
                                     8,

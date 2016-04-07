@@ -21,11 +21,7 @@
 #include <ti/sysbios/knl/Mailbox.h>
 
 #include "uart_task.h"
-
-typedef struct MsgObj
-{
-	uint16_t fatigue_val;            		// message value
-} MsgObj;
+#include "lcd_task.h"
 
 #define UARTBUFFERSIZE	3
 /*Task 0 Struct declaration*/
