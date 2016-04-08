@@ -97,9 +97,14 @@ int main(void)
     Board_initGPIO();
     Board_initUART();
 
-    // Setup LED Pin
-	MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-	MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
+	//Setup the RGB LED
+	MAP_GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN0);
+	MAP_GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN1);
+	MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
+	MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN1);
+
+	// RGB LED -> RED to show that no acquisition is happening currently
+	MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN0);
 
 	//Set up push-button
 	MAP_GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P1, GPIO_PIN1);
@@ -180,6 +185,9 @@ int main(void)
 
     // Start BIOS on push button press, TI-RTOS takes control after this call
    while(GPIO_getInputPinValue(GPIO_PORT_P1, GPIO_PIN1) != GPIO_INPUT_PIN_LOW){}
+
+   MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
+   MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN1);
    BIOS_start();
 
     return (0);
