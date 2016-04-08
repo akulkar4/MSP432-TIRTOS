@@ -38,7 +38,7 @@ Void uartFxn(UArg arg0, UArg arg1)
 	MsgObj msg;
 	/*Yet to figure out clock settings. Read won't work till then*/
     char rcvBuffer[UARTBUFFERSIZE];
-    char rcvChar;
+    char rcvChar, clearToSend = 'c';
     uint16_t i, ten_count = 0;
     UART_Handle uart;
     UART_Params uartParams;
@@ -56,6 +56,8 @@ Void uartFxn(UArg arg0, UArg arg1)
     {
         System_abort("Error opening the UART");
     }
+
+    UART_write(uart, &clearToSend, sizeof(clearToSend));
 
     /* Loop forever reading */
     while (1)

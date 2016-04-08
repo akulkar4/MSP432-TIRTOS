@@ -45,7 +45,6 @@
 /* TI-RTOS Header files */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/I2C.h>
-// #include <ti/drivers/SDSPI.h>
 #include <ti/drivers/SPI.h>
 #include <ti/drivers/UART.h>
 // #include <ti/drivers/Watchdog.h>
@@ -61,16 +60,16 @@
 #include "uart_task.h"
 #include "lcd_task.h"
 
-
 void ADC_Handler(void);
 void ADC_Process_Data(void);
 
+uint32_t count = 0;
 /* Timer_A Continuous Mode Configuration Parameter */
 const Timer_A_UpModeConfig upModeConfig =
 {
-        TIMER_A_CLOCKSOURCE_ACLK,            // ACLK Clock Source
-        TIMER_A_CLOCKSOURCE_DIVIDER_1,       // ACLK/1 = 32Khz
-        16384,
+        TIMER_A_CLOCKSOURCE_ACLK,            // MCLK Clock Source
+        TIMER_A_CLOCKSOURCE_DIVIDER_1,       // MCLK/1 = 3MHz
+        1024,
         TIMER_A_TAIE_INTERRUPT_DISABLE,      // Disable Timer ISR
         TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE, // Disable CCR0
         TIMER_A_DO_CLEAR                     // Clear Counter
@@ -82,8 +81,10 @@ const Timer_A_CompareModeConfig compareConfig =
         TIMER_A_CAPTURECOMPARE_REGISTER_1,          // Use CCR1
         TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
         TIMER_A_OUTPUTMODE_SET_RESET,               // Toggle output but
-        16384                                       // 16000 Period
+        1024,                                       // 16000 Period
 };
+
+
 /*
  *  ======== main ========
  */
@@ -98,6 +99,9 @@ int main(void)
     // Setup LED Pin
 	MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
 	MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
+
+	//Set up push-button
+	MAP_GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P1, GPIO_PIN1);
 
     /*UART Task*/
     init_uart_task();
@@ -173,7 +177,8 @@ int main(void)
     // Starting the Timer_A0
    MAP_Timer_A_startCounter(TIMER_A1_BASE, TIMER_A_UP_MODE);
 
-    // Start BIOS , TI-RTOS takes control after this call
+    // Start BIOS on push button press, TI-RTOS takes control after this call
+   while(GPIO_getInputPinValue(GPIO_PORT_P1, GPIO_PIN1) != GPIO_INPUT_PIN_LOW){}
    BIOS_start();
 
     return (0);
@@ -191,13 +196,28 @@ void ADC_Handler(void)
 
 void ADC_Process_Data(void)
 {
-	AccData acc;
-	/* Store ADC14 conversion results */
-	acc.x_value = ADC14_getResult(ADC_MEM0);
-	acc.y_value = ADC14_getResult(ADC_MEM1);
-	acc.z_value = ADC14_getResult(ADC_MEM2);
-	Mailbox_post (mailbox1, &acc, BIOS_NO_WAIT);
+	static AccData acc_avg;
 
-	// This is used only to check the frequency of the configured interrupt
-	GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+	if(count == 0)
+	{
+		acc_avg.x_value = 0;
+		acc_avg.y_value = 0;
+		acc_avg.z_value = 0;
+	}
+
+	acc_avg.x_value += ADC14_getResult(ADC_MEM0);
+	acc_avg.y_value += ADC14_getResult(ADC_MEM1);
+	acc_avg.z_value += ADC14_getResult(ADC_MEM2);
+
+
+	count++;
+	if(count == 16)
+	{
+		acc_avg.x_value = acc_avg.x_value/16;
+		acc_avg.y_value = acc_avg.y_value/16;
+		acc_avg.z_value = acc_avg.z_value/16;
+		count = 0;
+		GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+		Mailbox_post (mailbox1, &acc_avg, BIOS_NO_WAIT);
+	}
 }

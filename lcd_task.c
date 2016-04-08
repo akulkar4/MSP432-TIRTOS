@@ -65,6 +65,8 @@ Void lcdFxn(UArg arg0, UArg arg1)
 
     	// Different mailbox for the accelerometer values
     	Mailbox_pend (mailbox1, &acc, BIOS_WAIT_FOREVER);
+
+
     	drawFatigueTitle(&msg);
     	drawAccelTitle(&acc);
     }
@@ -82,16 +84,11 @@ void init_lcd_task()
     Task_construct(&task1Struct, (Task_FuncPtr)lcdFxn, &taskParams_1, NULL);
 }
 
-void drawAccelTitle(AccData *acc)
+void drawFatigueTitle(MsgObj *msg)
 {
-    Graphics_clearDisplay(&g_sContext);
-    Graphics_drawStringCentered(&g_sContext,
-                                    "Accelerometer:",
-                                    AUTO_STRING_LENGTH,
-                                    64,
-                                    30,
-                                    OPAQUE_TEXT);
-    drawAccelData(acc);
+	Graphics_clearDisplay(&g_sContext);
+    Graphics_drawStringCentered(&g_sContext, "Fatigue:", AUTO_STRING_LENGTH, 64, 40, OPAQUE_TEXT);
+    drawFatigueData(msg);
 }
 
 void drawFatigueData(MsgObj *msg)
@@ -100,44 +97,48 @@ void drawFatigueData(MsgObj *msg)
 	char string[8];
 
 	//Change number of chars to 1 and test.
-	sprintf(string, "%d", msg->fatigue_val);
-	Graphics_drawStringCentered(&g_sContext, (int8_t *)string, 8, 64, 90, OPAQUE_TEXT);
+	sprintf(string,"%d", msg->fatigue_val);
+	Graphics_drawStringCentered(&g_sContext, (int8_t *)string, 8, 64, 50, OPAQUE_TEXT);
 
 }
 
-void drawFatigueTitle(MsgObj *msg)
+
+void drawAccelTitle(AccData *acc)
 {
-    Graphics_clearDisplay(&g_sContext);
-    Graphics_drawStringCentered(&g_sContext, "Fatigue:", AUTO_STRING_LENGTH, 64, 60, OPAQUE_TEXT);
-    drawFatigueData(msg);
+    Graphics_drawStringCentered(&g_sContext,
+                                    "Accelerometer:",
+                                    AUTO_STRING_LENGTH,
+                                    64,
+                                    80,
+                                    OPAQUE_TEXT);
+    drawAccelData(acc);
 }
-
 
 void drawAccelData(AccData *acc)
 {
-    char string[8];
-    sprintf(string, "X: %5d", acc->x_value);
+    char string[10];
+    snprintf(string,10,"X: %5d", acc->x_value);
     Graphics_drawStringCentered(&g_sContext,
-                                    (int8_t *)string,
-                                    8,
-                                    64,
-                                    50,
-                                    OPAQUE_TEXT);
-
-    sprintf(string, "Y: %5d", acc->y_value);
-    Graphics_drawStringCentered(&g_sContext,
-                                    (int8_t *)string,
-                                    8,
-                                    64,
-                                    70,
-                                    OPAQUE_TEXT);
-
-    sprintf(string, "Z: %5d", acc->z_value);
-    Graphics_drawStringCentered(&g_sContext,
-                                    (int8_t *)string,
-                                    8,
+									(int8_t *)string,
+									8,
                                     64,
                                     90,
+                                    OPAQUE_TEXT);
+
+    snprintf(string,10,"Y: %5d", acc->y_value);
+    Graphics_drawStringCentered(&g_sContext,
+                                    (int8_t *)string,
+                                    8,
+                                    64,
+                                    100,
+                                    OPAQUE_TEXT);
+
+    snprintf(string,10,"Z: %5d", acc->z_value);
+    Graphics_drawStringCentered(&g_sContext,
+                                    (int8_t *)string,
+                                    8,
+                                    64,
+                                    110,
                                     OPAQUE_TEXT);
 
 }
