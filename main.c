@@ -57,6 +57,7 @@
 #include "grlib.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "uart_task.h"
 #include "lcd_task.h"
 
@@ -197,7 +198,9 @@ void ADC_Handler(void)
 void ADC_Process_Data(void)
 {
 	static AccData acc_avg;
-
+	static uint32_t acc_x_raw,acc_y_raw,acc_z_raw;
+	static uint32_t prev_x,prev_y,prev_z;
+	//Fresh start of a second, go ahead and change all the values.
 	if(count == 0)
 	{
 		acc_avg.x_value = 0;
@@ -205,19 +208,28 @@ void ADC_Process_Data(void)
 		acc_avg.z_value = 0;
 	}
 
-	acc_avg.x_value += ADC14_getResult(ADC_MEM0);
-	acc_avg.y_value += ADC14_getResult(ADC_MEM1);
-	acc_avg.z_value += ADC14_getResult(ADC_MEM2);
+	acc_x_raw = ADC14_getResult(ADC_MEM0);
+	acc_y_raw = ADC14_getResult(ADC_MEM1);
+	acc_z_raw = ADC14_getResult(ADC_MEM2);
 
+	if(count != 0)
+	{
+		acc_avg.x_value += abs(prev_x - acc_x_raw);
+		acc_avg.y_value += abs(prev_y - acc_y_raw);
+		acc_avg.z_value += abs(prev_z - acc_z_raw);
+	}
 
 	count++;
+	prev_x = acc_x_raw;
+	prev_y = acc_y_raw;
+	prev_z = acc_z_raw;
 	if(count == 16)
 	{
-		acc_avg.x_value = acc_avg.x_value/16;
-		acc_avg.y_value = acc_avg.y_value/16;
-		acc_avg.z_value = acc_avg.z_value/16;
+		acc_avg.x_value = acc_avg.x_value/15;
+		acc_avg.y_value = acc_avg.y_value/15;
+		acc_avg.z_value = acc_avg.z_value/15;
 		count = 0;
-		GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+
 		Mailbox_post (mailbox1, &acc_avg, BIOS_NO_WAIT);
 	}
 }
