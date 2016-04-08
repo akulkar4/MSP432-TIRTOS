@@ -56,6 +56,7 @@ Void lcdFxn(UArg arg0, UArg arg1)
 	Graphics_setForegroundColor(&g_sContext, GRAPHICS_COLOR_RED);
 	Graphics_setBackgroundColor(&g_sContext, GRAPHICS_COLOR_WHITE);
 	GrContextFontSet(&g_sContext, &g_sFontFixed6x8);
+	Graphics_clearDisplay(&g_sContext);
 
     /* Loop forever */
     while (1)
@@ -87,7 +88,7 @@ void init_lcd_task()
 void drawFatigueTitle(MsgObj *msg)
 {
 	Graphics_clearDisplay(&g_sContext);
-    Graphics_drawStringCentered(&g_sContext, "Fatigue:", AUTO_STRING_LENGTH, 64, 40, OPAQUE_TEXT);
+    Graphics_drawStringCentered(&g_sContext, "Muscle Contraction %:", AUTO_STRING_LENGTH, 64, 40, OPAQUE_TEXT);
     drawFatigueData(msg);
 }
 

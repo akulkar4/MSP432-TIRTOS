@@ -21,9 +21,9 @@ typedef struct MsgObj
 
 typedef struct AccelData
 {
-	uint32_t x_value;            		// message value
-	uint32_t y_value;            		// message value
-	uint32_t z_value;            		// message value
+	uint16_t x_value;            		// message value
+	uint16_t y_value;            		// message value
+	uint16_t z_value;            		// message value
 } AccData;
 
 

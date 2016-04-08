@@ -471,7 +471,7 @@ unsigned char uartMSP432RingBuffer[MSP_EXP432P401R_UARTCOUNT][32];
 const UARTMSP432_BaudrateConfig uartMSP432Baudrates[] = {
     /* {baudrate, input clock, prescalar, UCBRFx, UCBRSx, oversampling} */
     {
-        .outputBaudrate = 115200,
+        .outputBaudrate = 9600,
         .inputClockFreq = 12000000,
         .prescalar = 6,
         .hwRegUCBRFx = 8,
@@ -491,7 +491,7 @@ const UARTMSP432_HWAttrs uartMSP432HWAttrs[MSP_EXP432P401R_UARTCOUNT] = {
         .baseAddr = EUSCI_A0_BASE,
         .intNum = INT_EUSCIA0,
         .intPriority = (~0),
-        .clockSource = EUSCI_A_UART_CLOCKSOURCE_SMCLK,
+        .clockSource = EUSCI_A_UART_CLOCKSOURCE_ACLK,
         .bitOrder = EUSCI_A_UART_LSB_FIRST,
         .numBaudrateEntries = sizeof(uartMSP432Baudrates) /
             sizeof(UARTMSP432_BaudrateConfig),

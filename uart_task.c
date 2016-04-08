@@ -7,7 +7,7 @@
 
 #include "Board.h"
 #include <string.h>
-
+#include<driverlib.h>
 #include <ti/drivers/UART.h>
 
 /* XDCtools Header files */
@@ -49,7 +49,7 @@ Void uartFxn(UArg arg0, UArg arg1)
     uartParams.readDataMode = UART_DATA_BINARY;
     uartParams.readReturnMode = UART_RETURN_FULL;
     uartParams.readEcho = UART_ECHO_OFF;
-    uartParams.baudRate = 115200;
+    uartParams.baudRate = 9600;
     uart = UART_open(Board_UART0, &uartParams);
 
     if (uart == NULL)
@@ -69,14 +69,20 @@ Void uartFxn(UArg arg0, UArg arg1)
      	{
      		UART_read(uart, &rcvChar, 1);
      		rcvChar = rcvChar - 0x30;
-
+     		System_printf("%d",rcvChar);
+     		System_flush();
+     		if(rcvChar == 15)
+				{
+     				MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN1);
+     				MAP_GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN0);
+				}
     		if(rcvChar != 241)
     		{
     			rcvBuffer[i] = rcvChar;
     		}
-
     		else
     			break;
+
      	}
 
      	for(i=0; i<UARTBUFFERSIZE; i++)
@@ -97,7 +103,10 @@ Void uartFxn(UArg arg0, UArg arg1)
      	else
      		msg.fatigue_val = 0;  																			//failsafe
 
-     	Mailbox_post (mailbox0, &msg, BIOS_WAIT_FOREVER);
+     	//This is the raw muscle contraction value that should be converted to a percentage
+     	msg.fatigue_val = msg.fatigue_val*100;
+     	msg.fatigue_val = msg.fatigue_val/300;
+     	Mailbox_post(mailbox0, &msg, BIOS_WAIT_FOREVER);
         //post input to mqueue
     }
 }

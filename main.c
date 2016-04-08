@@ -61,10 +61,6 @@
 #include "uart_task.h"
 #include "lcd_task.h"
 
-void ADC_Handler(void);
-void ADC_Process_Data(void);
-
-uint32_t count = 0;
 /* Timer_A Continuous Mode Configuration Parameter */
 const Timer_A_UpModeConfig upModeConfig =
 {
@@ -122,7 +118,7 @@ int main(void)
     MAP_Interrupt_disableMaster();
 
    /* Initializes Clock System - This is required for the LCD */
-   MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_12);
+   MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_48);
    MAP_CS_initClockSignal(CS_MCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_HSMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
    MAP_CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1 );
@@ -154,11 +150,11 @@ int main(void)
    //Configuring Timer_A1 in continuous mode and sourced from ACLK
    MAP_Timer_A_configureUpMode(TIMER_A1_BASE, &upModeConfig);
 
-   // Configuring Timer_A1 in CCR1 to trigger at 16000 (0.5s)
+   // Configuring Timer_A1 in CCR1 to trigger at 1/16 of a second
    MAP_Timer_A_initCompare(TIMER_A1_BASE, &compareConfig);
 
    // Configuring the sample trigger to be sourced from Timer_A1  and setting it
-   // to automatic iteration after it is triggereds
+   // to automatic iteration after it is triggered
    MAP_ADC14_setSampleHoldTrigger(ADC_TRIGGER_SOURCE3, false);
 
    //Enabling the interrupt when a conversion on channel 2 (end of sequence)
@@ -206,9 +202,11 @@ void ADC_Handler(void)
 void ADC_Process_Data(void)
 {
 	static AccData acc_avg;
-	static uint32_t acc_x_raw,acc_y_raw,acc_z_raw;
-	static uint32_t prev_x,prev_y,prev_z;
-	//Fresh start of a second, go ahead and change all the values.
+	static uint16_t acc_x_raw,acc_y_raw,acc_z_raw;
+	static uint16_t prev_x,prev_y,prev_z;
+	static uint8_t count = 0;
+
+	//Fresh start of a second, reset averages.
 	if(count == 0)
 	{
 		acc_avg.x_value = 0;
